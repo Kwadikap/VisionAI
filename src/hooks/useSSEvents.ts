@@ -4,10 +4,10 @@ import { useCallback, useEffect, useRef } from 'react';
 
 interface SSEventsProps {
   sessionId: string;
-  // addMessage: (msg: Message) => void;
+  startConnection: boolean;
 }
 
-export function useSSEvents({ sessionId }: SSEventsProps) {
+export function useSSEvents({ sessionId, startConnection }: SSEventsProps) {
   // const isAudio = useRef<boolean>(false);
   const connectionOpen = useRef<boolean>(false);
   const currentMessageId = useRef<string>(null);
@@ -17,15 +17,22 @@ export function useSSEvents({ sessionId }: SSEventsProps) {
   const messageUrl = baseUrl + '/send/' + sessionId;
 
   const eventSourceRef = useRef<EventSource>(null);
+  const retryCount = useRef(5);
+  const reconnecting = useRef(false);
 
   const { addMessage, updateMessage } = useChatContext();
 
-  useEffect(() => {
-    connectSSE();
-  }, [sessionId]);
+  const cleanup = () => {
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    connectionOpen.current = false;
+  };
 
   const connectSSE = useCallback(() => {
-    if (connectionOpen.current) return;
+    if (connectionOpen.current || reconnecting.current) return;
+    if (retryCount.current <= 0) return;
 
     // Connect to the SSE endpoint
     const eventSource = new EventSource(sseUrl);
@@ -34,8 +41,9 @@ export function useSSEvents({ sessionId }: SSEventsProps) {
     // Handle connection open
     eventSource.onopen = () => {
       // Connection opened messages
-      console.log('SSE connection opened');
       connectionOpen.current = true;
+      reconnecting.current = false;
+      console.log('SSE connection opened');
     };
 
     // Handle incoming messages
@@ -74,15 +82,34 @@ export function useSSEvents({ sessionId }: SSEventsProps) {
 
     // Handle connection close
     eventSource.onerror = function () {
-      console.log('SSE connection error or closed');
-      connectionOpen.current = false;
-      eventSource.close();
+      // Prevent multiple concurrent error handlers racing
+      if (reconnecting.current) return;
+      reconnecting.current = true;
+
+      cleanup();
+
+      if (retryCount.current > 0) {
+        retryCount.current -= 1;
+      }
+      if (retryCount.current <= 0) {
+        // Final failure - stop trying
+        return;
+      }
       setTimeout(() => {
         console.log('Reconnecting...');
+        reconnecting.current = false;
         connectSSE();
       }, 5000);
     };
-  }, []);
+  }, [sseUrl, addMessage, updateMessage]);
+
+  useEffect(() => {
+    if (!startConnection) return;
+    // Reset retries on new session
+    retryCount.current = 5;
+    connectSSE();
+    return () => cleanup();
+  }, [sessionId, connectSSE, startConnection]);
 
   async function sendMessage(message: string) {
     try {

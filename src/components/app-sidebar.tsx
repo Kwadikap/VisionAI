@@ -1,10 +1,10 @@
 import {
-  ChevronDown,
   Send,
-  Plus,
   Sun,
   MoreHorizontal,
   MessageCirclePlus,
+  ChevronUp,
+  CircleUserRound,
 } from 'lucide-react';
 
 import {
@@ -12,10 +12,8 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarGroupAction,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuAction,
   SidebarMenuButton,
@@ -33,18 +31,18 @@ import {
 import { useTheme, type Theme } from '@/providers/ThemeProvider';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { SignInButton } from './SignInButton';
-import { useIsAuthenticated } from '@azure/msal-react';
+import {
+  AuthenticatedTemplate,
+  UnauthenticatedTemplate,
+} from '@azure/msal-react';
 import { SignOutButton } from './SignOutButton';
+import { useUserConfig } from '@/hooks/useUserConfig';
 
 interface MenuItem {
   title: string;
   url: string;
   icon: ComponentType;
 }
-
-const AGENT_DROPDOWN_LIST: string[] = ['V1'];
-
-// const USER_SETTINGS: string[] = ['Sign out'];
 
 const settings: MenuItem[] = [
   {
@@ -87,36 +85,12 @@ const MODE_TO_THEME: Record<string, Theme> = {
 };
 
 export function AppSidebar() {
-  const isAuthenticated = useIsAuthenticated();
-  console.log('user is authenticated', isAuthenticated);
+  const { username } = useUserConfig();
   const { setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   return (
     <Sidebar>
-      {/* sidebar header */}
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  Select Agent
-                  <ChevronDown className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
-                {AGENT_DROPDOWN_LIST.map((agent) => (
-                  <DropdownMenuItem key={agent} className="cursor-pointer">
-                    <span>{agent}</span>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarHeader>
-      {/* sidebar content */}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
@@ -164,36 +138,56 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Chats</SidebarGroupLabel>
-          <SidebarGroupAction title="New Chat">
-            <Plus /> <span className="sr-only">New Chat</span>
-          </SidebarGroupAction>
-          <SidebarGroupContent>
-            <SidebarMenu className="pr-2">
-              {chatHistory.map((chat) => (
-                <SidebarMenuItem key={chat.name}>
-                  <SidebarMenuButton asChild isActive={chat.isActive}>
-                    <span className="cursor-pointer">{chat.name}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <AuthenticatedTemplate>
+          <SidebarGroup>
+            <SidebarGroupLabel>Chats</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu className="pr-2">
+                {chatHistory.map((chat) => (
+                  <SidebarMenuItem key={chat.name}>
+                    <SidebarMenuButton asChild isActive={chat.isActive}>
+                      <span className="cursor-pointer">{chat.name}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </AuthenticatedTemplate>
       </SidebarContent>
       {/* sidebar footer */}
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Replace DropdownMenu with a simple button */}
-            <SidebarMenuButton asChild>
-              {isAuthenticated ? (
-                <SignOutButton />
-              ) : (
-                <SignInButton className="w-full justify-start" />
-              )}
-            </SidebarMenuButton>
+            {/* Unauthenticated: simple sign in button */}
+            <UnauthenticatedTemplate>
+              <SidebarMenuButton asChild>
+                <SignInButton className="h-full w-full" />
+              </SidebarMenuButton>
+            </UnauthenticatedTemplate>
+
+            {/* Authenticated menu */}
+            <AuthenticatedTemplate>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <SidebarMenuButton className="h-full min-h-12 bg-gray-200 dark:bg-black dark:text-white">
+                    <CircleUserRound />
+                    {username}
+                    <ChevronUp className="ml-auto" />
+                  </SidebarMenuButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  side="top"
+                  className="w-[--radix-popper-anchor-width]"
+                >
+                  <DropdownMenuItem>
+                    <span>
+                      <SignOutButton />
+                    </span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </AuthenticatedTemplate>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>

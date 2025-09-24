@@ -18,7 +18,7 @@ export const SignInButton = ({ className }: { className?: string }) => {
       disabled={loading}
       onClick={handleLogin}
       className={cn(
-        'inline-flex w-max items-center rounded bg-black px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50',
+        'inline-flex w-max items-center rounded bg-gray-800 px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-50',
         className
       )}
     >

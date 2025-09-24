@@ -2,15 +2,7 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  PaperAirplaneIcon,
-  // MicrophoneIcon,
-  // StopIcon,
-} from '@heroicons/react/24/outline';
-
-// import { useWebSocket } from '@/hooks/useWebSocket';
-// import { useChatContext } from '@/context/ChatContext';
-// import { MessageType, type Message } from './types';
+import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
 
 import { Form, FormControl, FormField, FormItem } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,21 +15,12 @@ const InputSchema = z.object({
 
 export function MessageInputForm() {
   const [sessionId] = useState<string>(crypto.randomUUID());
-
-  // const {
-  //   connectWebsocket,
-  //   sendMessage,
-  //   socketOpen,
-  //   is_audio,
-  //   reconnectWithNewMode,
-  //   disconnect,
-  // } = useWebSocket({
-  //   sessionId,
-  //   addMessage,
-  // });
+  const [initialMessage, setInitialMessage] = useState<boolean>(true);
+  const [startConnection, setStartConnection] = useState<boolean>(false);
 
   const { sendMessage, connectionOpen } = useSSEvents({
     sessionId,
+    startConnection,
   });
 
   const form = useForm<z.infer<typeof InputSchema>>({
@@ -45,64 +28,11 @@ export function MessageInputForm() {
     defaultValues: { message: '' },
   });
 
-  // function isStreamingAudio() {
-  //   return socketOpen && is_audio;
-  // }
-
-  // Connect for text mode (is_audio=false)
-  // function startTextConversation() {
-  //   if (!socketOpen || is_audio) {
-  //     reconnectWithNewMode(false);
-  //     setTimeout(() => connectWebsocket(), 150);
-  //   }
-  // }
-
-  // Connect for audio mode (is_audio=true)
-  // function startAudioConversation() {
-  //   addMessage({
-  //     id: crypto.randomUUID(),
-  //     isUser: true,
-  //     data: 'Speaking...',
-  //     type: MessageType.text,
-  //   });
-
-  //   if (!socketOpen || !is_audio) {
-  //     reconnectWithNewMode(true);
-  //   }
-  // }
-
-  // function onSubmit(data: z.infer<typeof InputSchema>) {
-  //   // Start text mode if not connected
-  //   if (!socketOpen) {
-  //     startTextConversation();
-  //     // Wait for connection before sending
-  //     setTimeout(() => {
-  //       const msg: Message = {
-  //         id: crypto.randomUUID(),
-  //         isUser: true,
-  //         data: data.message,
-  //         type: MessageType.text,
-  //       };
-  //       addMessage(msg);
-  //       sendMessage({ type: MessageType.text, data: data.message });
-  //       form.reset();
-  //     }, 500);
-  //     return;
-  //   }
-
-  //   // Send immediately if already connected
-  //   const msg: Message = {
-  //     id: crypto.randomUUID(),
-  //     isUser: true,
-  //     data: data.message,
-  //     type: MessageType.text,
-  //   };
-  //   addMessage(msg);
-  //   sendMessage({ type: MessageType.text, data: data.message });
-  //   form.reset();
-  // }
-
   function onSubmit(data: z.infer<typeof InputSchema>) {
+    if (initialMessage) {
+      setStartConnection(true);
+      setInitialMessage(false);
+    }
     sendMessage(data.message);
     form.reset();
   }
@@ -146,24 +76,8 @@ export function MessageInputForm() {
           type="submit"
           aria-label="Send text message"
           variant={connectionOpen.current ? 'default' : 'secondary'}
-          // variant={'secondary'}
-          disabled={!connectionOpen.current}
           icon={<PaperAirplaneIcon className="h-5 w-5" />}
         />
-
-        {/* <IconButton
-          type="button"
-          aria-label="Start audio conversation"
-          variant={isStreamingAudio() ? 'destructive' : 'secondary'}
-          onClick={isStreamingAudio() ? disconnect : startAudioConversation}
-          icon={
-            isStreamingAudio() ? (
-              <StopIcon className="h-5 w-5" />
-            ) : (
-              <MicrophoneIcon className="h-5 w-5" />
-            )
-          }
-        /> */}
       </form>
     </Form>
   );
