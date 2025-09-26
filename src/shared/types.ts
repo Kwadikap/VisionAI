@@ -21,3 +21,9 @@ export interface IdTokenClaims {
   roles: string[];
   [key: string]: string | number | string[] | boolean | undefined;
 }
+
+export enum Tier {
+  BASIC = 'basic',
+  PRO = 'pro',
+  ADVANCED = 'advanced',
+}

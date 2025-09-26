@@ -24,3 +24,18 @@ export async function getToken(): Promise<string> {
     return res.accessToken;
   }
 }
+
+export async function getTokenIfAvailable(): Promise<string | null> {
+  const account = pca.getActiveAccount() ?? pca.getAllAccounts()[0];
+  if (!account) return null;
+  try {
+    const res = await pca.acquireTokenSilent({ ...loginRequest, account });
+    return res.accessToken || null;
+  } catch {
+    return null; // stay guest
+  }
+}
+
+export function isAuthenticated(): boolean {
+  return !!(pca.getActiveAccount() ?? pca.getAllAccounts()[0]);
+}

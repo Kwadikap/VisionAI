@@ -13,7 +13,7 @@ export function MessageList() {
 
   return (
     <div className="h-full">
-      <ScrollArea className="h-full">
+      <ScrollArea className="h-full pr-4">
         {messages.map((m) => (
           <div key={m.id} className="m-2 my-4">
             <Message message={m.data} isUser={m.isUser} />

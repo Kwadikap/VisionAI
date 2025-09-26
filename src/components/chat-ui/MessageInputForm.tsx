@@ -9,18 +9,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { IconButton } from '@/components/ui/IconButton';
 import { useSSEvents } from '@/hooks/useSSEvents';
 
-const InputSchema = z.object({
-  message: z.string().min(1),
-});
+const InputSchema = z.object({ message: z.string().min(1) });
 
 export function MessageInputForm() {
-  const [sessionId] = useState<string>(crypto.randomUUID());
-  const [initialMessage, setInitialMessage] = useState<boolean>(true);
-  const [startConnection, setStartConnection] = useState<boolean>(false);
+  const [startConnection] = useState(true);
 
-  const { sendMessage, connectionOpen } = useSSEvents({
-    sessionId,
+  const { sendMessage, isConnected } = useSSEvents({
     startConnection,
+    baseUrl: 'http://localhost:8000',
   });
 
   const form = useForm<z.infer<typeof InputSchema>>({
@@ -28,12 +24,10 @@ export function MessageInputForm() {
     defaultValues: { message: '' },
   });
 
-  function onSubmit(data: z.infer<typeof InputSchema>) {
-    if (initialMessage) {
-      setStartConnection(true);
-      setInitialMessage(false);
-    }
-    sendMessage(data.message);
+  async function onSubmit(data: z.infer<typeof InputSchema>) {
+    const msg = data.message.trim();
+    if (!msg || !isConnected) return;
+    await sendMessage(msg);
     form.reset();
   }
 
@@ -51,8 +45,11 @@ export function MessageInputForm() {
               <FormControl>
                 <Textarea
                   rows={1}
-                  placeholder="What's on your mind..."
-                  className="no-scrollbar max-h-[120px] min-h-[40px] resize-none rounded-2xl"
+                  placeholder={
+                    isConnected ? "What's on your mind..." : 'Connecting...'
+                  }
+                  disabled={!isConnected}
+                  className="no-scrollbar max-h-[120px] min-h-[40px] resize-none rounded-2xl disabled:opacity-60"
                   onInput={(e) => {
                     const target = e.target as HTMLTextAreaElement;
                     target.style.height = 'auto';
@@ -71,11 +68,11 @@ export function MessageInputForm() {
             </FormItem>
           )}
         />
-
         <IconButton
           type="submit"
           aria-label="Send text message"
-          variant={connectionOpen.current ? 'default' : 'secondary'}
+          variant={isConnected ? 'default' : 'secondary'}
+          disabled={!isConnected}
           icon={<PaperAirplaneIcon className="h-5 w-5" />}
         />
       </form>
