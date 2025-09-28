@@ -3,7 +3,7 @@ import axios, {
   AxiosHeaders,
   type InternalAxiosRequestConfig,
 } from 'axios';
-import { getToken, getTokenIfAvailable } from '@/shared/msal';
+import { getTokenIfAvailable } from '@/shared/msal';
 
 const VISION_API_BASE =
   import.meta.env.VITE_VISION_API_BASE || 'http://localhost:8000';
@@ -11,12 +11,13 @@ const VISION_API_BASE =
 function withAuth(client: AxiosInstance) {
   client.interceptors.request.use(
     async (config: InternalAxiosRequestConfig) => {
-      const token = await getToken();
-      if (token) {
+      const authHeaders = await optionalAuthHeaders();
+      const bearer = authHeaders.Authorization;
+      if (bearer) {
         if (!(config.headers instanceof AxiosHeaders)) {
           config.headers = new AxiosHeaders(config.headers);
         }
-        config.headers.set('Authorization', `Bearer ${token}`);
+        config.headers.set('Authorization', bearer);
       }
       return config;
     }
