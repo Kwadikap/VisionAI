@@ -3,6 +3,7 @@ import type { Configuration } from '@azure/msal-browser';
 const tenant = import.meta.env.VITE_TENANT;
 const domain = `${tenant}.ciamlogin.com`;
 const authority = `https://${domain}/${tenant}.onmicrosoft.com`;
+const apiScope = import.meta.env.VITE_API_SCOPE;
 
 export const b2cConfig: Configuration = {
   auth: {
@@ -17,5 +18,5 @@ export const b2cConfig: Configuration = {
 };
 
 export const loginRequest = {
-  scopes: ['openid', 'profile', 'offline_access'], // plus your API scopes if needed
+  scopes: ['openid', 'profile', 'offline_access', apiScope], // plus your API scopes if needed
 };
