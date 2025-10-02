@@ -20,7 +20,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
-import type { ComponentType } from 'react';
+import { useState, type ComponentType } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,6 +37,10 @@ import {
 } from '@azure/msal-react';
 import { SignOutButton } from './SignOutButton';
 import { useUserConfig } from '@/hooks/useUserConfig';
+import { clearMessages, loadMessages } from './chat-ui/chatSlice';
+import { useAppDispatch } from '@/hooks/useState';
+import { useSession } from '@/hooks/useSession';
+import { useLiveConnection } from '@/hooks/useLiveConnection';
 
 interface MenuItem {
   title: string;
@@ -57,21 +61,6 @@ const settings: MenuItem[] = [
   },
 ];
 
-const chatHistory = [
-  {
-    name: 'How to videos',
-    isActive: true,
-  },
-  {
-    name: 'What is an llm',
-    isActive: false,
-  },
-  {
-    name: 'Who was the first..',
-    isActive: false,
-  },
-];
-
 enum DISPLAY_MODES {
   LIGHT_MODE = 'Light mode',
   DARK_MODE = 'Dark mode',
@@ -89,6 +78,28 @@ export function AppSidebar() {
   const { setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
+  const { chatHistory, refetchHistory, createSession } = useSession();
+  const [startConnection, setStartConnection] = useState(false);
+
+  useLiveConnection({
+    startConnection,
+    baseUrl: 'http://localhost:8000',
+  });
+
+  const handleNewChat = async () => {
+    dispatch(clearMessages());
+    try {
+      await createSession.mutateAsync(); // wait for /session/init
+      // Optionally inspect result.session_id
+      setStartConnection(true); // triggers re-render → hook sees true → connects
+      refetchHistory(); // after session exists
+      navigate('/');
+    } catch (e) {
+      console.error('Failed to start new chat', e);
+    }
+  };
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -100,7 +111,13 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
-                    onClick={() => navigate(item.url)}
+                    onClick={() => {
+                      if (item.title === 'New Chat') {
+                        handleNewChat();
+                      } else {
+                        navigate(item.url);
+                      }
+                    }}
                     isActive={location.pathname === item.url}
                   >
                     <div className="flex cursor-pointer">
@@ -143,10 +160,19 @@ export function AppSidebar() {
             <SidebarGroupLabel>Chats</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="pr-2">
-                {chatHistory.map((chat) => (
-                  <SidebarMenuItem key={chat.name}>
-                    <SidebarMenuButton asChild isActive={chat.isActive}>
-                      <span className="cursor-pointer">{chat.name}</span>
+                {chatHistory?.sessions?.map((session) => (
+                  <SidebarMenuItem key={session.session_id}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={false}
+                      onClick={() => {
+                        dispatch(loadMessages(session.messages));
+                      }}
+                      className="my-1 flex h-12 items-center gap-2 py-2"
+                    >
+                      <span className="cursor-pointer">
+                        {session.session_id}
+                      </span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -159,7 +185,6 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            {/* Unauthenticated: simple sign in button */}
             <UnauthenticatedTemplate>
               <SidebarMenuButton asChild>
                 <SignInButton className="h-full w-full" />

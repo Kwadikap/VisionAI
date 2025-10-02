@@ -10,6 +10,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { MsalProvider } from '@azure/msal-react';
 import { pca } from './shared/msal';
+import { store } from './store.ts';
+import { Provider } from 'react-redux';
 
 const router = createBrowserRouter([
   {
@@ -33,14 +35,17 @@ const router = createBrowserRouter([
 ]);
 
 const queryClient = new QueryClient();
+if (pca.initialize) await pca.initialize();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MsalProvider instance={pca}>
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>
-      <Toaster />
+      <Provider store={store}>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+        <Toaster />
+      </Provider>
     </MsalProvider>
   </StrictMode>
 );

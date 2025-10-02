@@ -8,6 +8,8 @@ export interface Props {
   className?: string;
 }
 
+const STORAGE_KEY = import.meta.env.VITE_STORAGE_KEY;
+
 export const SignOutButton = React.forwardRef<HTMLButtonElement, Props>(
   (props, ref) => {
     const { instance } = useMsal();
@@ -15,6 +17,7 @@ export const SignOutButton = React.forwardRef<HTMLButtonElement, Props>(
     const handleLogout = () => {
       instance.logoutRedirect();
       localStorage.removeItem('accessToken');
+      localStorage.removeItem(STORAGE_KEY);
     };
     return (
       <span className="flex w-full items-center">

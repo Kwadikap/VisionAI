@@ -6,6 +6,7 @@ import {
 } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import { ThemeProvider } from './providers/ThemeProvider';
+import { Toaster } from 'sonner';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
             <Outlet />
           </main>
         </SidebarInset>
+        <Toaster position="bottom-right" richColors />
       </SidebarProvider>
     </ThemeProvider>
   );

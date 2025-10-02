@@ -1,18 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MessageType } from '@/components/chat-ui/types';
-import { useChatContext } from '@/context/ChatContext';
 import { visionApi } from '@/shared/api';
+import { addMessage, updateMessage } from '@/components/chat-ui/chatSlice';
+import { useAppDispatch } from './useState';
+import { toast } from 'sonner';
 
 interface SSEventsProps {
   startConnection: boolean;
   baseUrl?: string; // default http://localhost:8000
 }
 
+const STREAM_ERROR_ID = 'stream-error';
+const SEND_ERROR_ID = 'send-error';
+
 export function useLiveConnection({
   startConnection,
   baseUrl = 'http://localhost:8000',
 }: SSEventsProps) {
-  const { addMessage, updateMessage } = useChatContext();
+  const dispatch = useAppDispatch();
   const [isConnected, setIsConnected] = useState(false);
 
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -71,52 +76,74 @@ export function useLiveConnection({
         // add a new message for new turn
         if (currentMessageId.current == null) {
           currentMessageId.current = crypto.randomUUID();
-          addMessage({
-            id: currentMessageId.current,
-            isUser: false,
-            data: '',
-            type: MessageType.text,
-          });
+          dispatch(
+            addMessage({
+              id: currentMessageId.current,
+              isUser: false,
+              data: '',
+              type: MessageType.text,
+            })
+          );
         }
 
         // Add message text to the existing message element
-        updateMessage(currentMessageId.current, incoming_message.data);
+        dispatch(
+          updateMessage({
+            id: currentMessageId.current,
+            content: incoming_message.data,
+            replace: false,
+          })
+        );
       }
     };
 
     // Handle connection close
     es.onerror = function () {
+      toast.error('Stream connection lost', { id: STREAM_ERROR_ID });
       cleanup();
     };
-  }, [baseUrl, addMessage, updateMessage, cleanup]);
+  }, [baseUrl, cleanup, dispatch]);
 
   const sendMessage = useCallback(
     async (message: string) => {
       if (!connectionOpen.current) return;
 
-      addMessage({
-        id: crypto.randomUUID(),
-        isUser: true,
-        data: message,
-        type: MessageType.text,
-      });
-
-      const res = await visionApi.post(
-        `${baseUrl}/send`,
-        JSON.stringify({ mime_type: 'text/plain', data: message })
-      );
-
-      if (res.status !== 200) {
-        console.error('Failed to send message', res.data);
+      dispatch(
         addMessage({
           id: crypto.randomUUID(),
           isUser: true,
-          data: res.data,
+          data: message,
           type: MessageType.text,
-        });
+        })
+      );
+
+      try {
+        const res = await visionApi.post(
+          `${baseUrl}/send`,
+          { mime_type: 'text/plain', data: message },
+          { validateStatus: () => true }
+        );
+
+        if (res.status !== 200) {
+          const errMsg =
+            'Error: ' +
+              (res.data &&
+                (res.data.error || res.data.message || res.data.detail)) ||
+            `Send failed (${res.status})`;
+          toast.error(errMsg, { id: SEND_ERROR_ID });
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } catch (e: any) {
+        const errMsg =
+          e?.response?.data?.error ||
+          e?.response?.data?.message ||
+          e?.response?.detail ||
+          e?.message ||
+          'Network error sending message';
+        toast.error(errMsg, { id: SEND_ERROR_ID });
       }
     },
-    [baseUrl, addMessage]
+    [baseUrl, dispatch]
   );
 
   useEffect(() => {

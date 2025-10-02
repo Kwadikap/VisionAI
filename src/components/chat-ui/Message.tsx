@@ -1,12 +1,18 @@
 import { cn } from '@/lib/utils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Bot, User } from 'lucide-react';
 
 interface MessageProps {
   message: string;
   isUser: boolean;
 }
+
+const IconWrapper = ({ children }: { children: React.ReactNode }) => (
+  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-muted-foreground">
+    {children}
+  </div>
+);
 
 export function Message({ message, isUser }: MessageProps) {
   return (
@@ -17,13 +23,9 @@ export function Message({ message, isUser }: MessageProps) {
       )}
     >
       {!isUser && (
-        <Avatar className="h-9 w-9 shrink-0">
-          <AvatarImage
-            src="https://github.com/shadcn.png"
-            className="object-cover"
-          />
-          <AvatarFallback>AI</AvatarFallback>
-        </Avatar>
+        <IconWrapper>
+          <Bot className="h-5 w-5" />
+        </IconWrapper>
       )}
       <div
         className={cn(
@@ -81,13 +83,9 @@ export function Message({ message, isUser }: MessageProps) {
         </ReactMarkdown>
       </div>
       {isUser && (
-        <Avatar className="h-9 w-9 shrink-0">
-          <AvatarImage
-            src="https://github.com/kwadikap.png"
-            className="object-cover"
-          />
-          <AvatarFallback>User</AvatarFallback>
-        </Avatar>
+        <IconWrapper>
+          <User className="2-5 h-5" />
+        </IconWrapper>
       )}
     </div>
   );

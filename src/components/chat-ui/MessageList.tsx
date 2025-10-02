@@ -1,10 +1,10 @@
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useChatContext } from '@/context/ChatContext';
 import { Message } from './Message';
 import { useEffect, useRef } from 'react';
+import { useAppSelector } from '@/hooks/useState';
 
 export function MessageList() {
-  const { messages } = useChatContext();
+  const messages = useAppSelector((state) => state.chat.messages);
   const bottomRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {

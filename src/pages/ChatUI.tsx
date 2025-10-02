@@ -1,16 +1,18 @@
 import { MessageInputForm } from '@/components/chat-ui/MessageInputForm';
 import { MessageList } from '@/components/chat-ui/MessageList';
 import { useLiveConnection } from '@/hooks/useLiveConnection';
-import { visionApi } from '@/shared/api';
+import { useSession } from '@/hooks/useSession';
 import { useEffect, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 export function ChatUI() {
   const [startConnection, setStartConnection] = useState(false);
   const initCalled = useRef(false);
+  const { createSession } = useSession();
 
   const initSession = async () => {
     try {
-      await visionApi.post('/session/init');
+      await createSession.mutateAsync();
       if (!startConnection) setStartConnection(true);
     } catch (e) {
       console.error('Session init failed', e);
@@ -28,6 +30,10 @@ export function ChatUI() {
     startConnection,
     baseUrl: 'http://localhost:8000',
   });
+
+  useEffect(() => {
+    if (isConnected) toast.success('Connected to agent');
+  }, [isConnected]);
 
   return (
     <div className="mx-auto flex h-full max-w-4xl flex-col overflow-hidden px-4 py-4">
