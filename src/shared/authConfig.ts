@@ -18,5 +18,5 @@ export const b2cConfig: Configuration = {
 };
 
 export const loginRequest = {
-  scopes: ['openid', 'profile', 'offline_access', apiScope], // plus your API scopes if needed
+  scopes: ['openid', 'profile', apiScope], // plus your API scopes if needed
 };

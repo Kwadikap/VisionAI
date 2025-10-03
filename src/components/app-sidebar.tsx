@@ -166,6 +166,7 @@ export function AppSidebar() {
                       asChild
                       isActive={false}
                       onClick={() => {
+                        refetchHistory();
                         dispatch(loadMessages(session.messages));
                       }}
                       className="my-1 flex h-12 items-center gap-2 py-2"
