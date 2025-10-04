@@ -1,34 +1,68 @@
+import { loadMessages } from '@/components/chat-ui/chatSlice';
 import { MessageInputForm } from '@/components/chat-ui/MessageInputForm';
 import { MessageList } from '@/components/chat-ui/MessageList';
 import { useLiveConnection } from '@/hooks/useLiveConnection';
 import { useSession } from '@/hooks/useSession';
+import { useAppDispatch } from '@/hooks/useState';
 import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export function ChatUI() {
+  const { sessionId } = useParams<{ sessionId: string }>();
+  const dispatch = useAppDispatch();
   const [startConnection, setStartConnection] = useState(false);
   const initCalled = useRef(false);
-  const { createSession } = useSession();
+  const resumedFor = useRef<string | null>(null); // guard per-session resume
+  const { createSession, resumeSession } = useSession();
 
-  const initSession = async () => {
-    try {
-      await createSession.mutateAsync();
-      if (!startConnection) setStartConnection(true);
-    } catch (e) {
-      console.error('Session init failed', e);
-    }
-  };
-
+  // If no sessionId in URL, create a new session once
   useEffect(() => {
+    if (sessionId) return; // resume path handles this
     if (initCalled.current) return;
     initCalled.current = true;
+    (async () => {
+      try {
+        await createSession.mutateAsync();
+        if (!startConnection) setStartConnection(true);
+      } catch (e) {
+        console.error('Session init failed', e);
+      }
+    })();
+  }, [sessionId, createSession, startConnection]);
 
-    initSession();
-  }, []);
+  // If sessionId present, resume that session and load messages
+  useEffect(() => {
+    if (!sessionId) return;
+    if (resumedFor.current === sessionId) return; // prevent loops/duplicates
+    resumedFor.current = sessionId;
+
+    resumeSession.mutate(
+      { sessionId, startStream: false, updateToken: true },
+      {
+        onSuccess: (data) => {
+          const sess =
+            data.sessions?.find((s) => s.session_id === sessionId) ??
+            data.sessions?.[0];
+          if (sess) {
+            dispatch(loadMessages(sess.messages));
+            setStartConnection(true);
+          } else {
+            toast.error('Session not found');
+          }
+        },
+        onError: () => {
+          // allow retry if navigation changes
+          resumedFor.current = null;
+        },
+      }
+    );
+  }, [sessionId]);
 
   const { sendMessage, isConnected } = useLiveConnection({
     startConnection,
     baseUrl: 'http://localhost:8000',
+    reconnectKey: sessionId || 'root', // force reconnect when switching sessions
   });
 
   useEffect(() => {

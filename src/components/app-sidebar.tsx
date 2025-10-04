@@ -20,7 +20,7 @@ import {
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 
-import { useState, type ComponentType } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,10 +37,9 @@ import {
 } from '@azure/msal-react';
 import { SignOutButton } from './SignOutButton';
 import { useUserConfig } from '@/hooks/useUserConfig';
-import { clearMessages, loadMessages } from './chat-ui/chatSlice';
+import { clearMessages } from './chat-ui/chatSlice';
 import { useAppDispatch } from '@/hooks/useState';
-import { useSession } from '@/hooks/useSession';
-import { useLiveConnection } from '@/hooks/useLiveConnection';
+import { useSession, type ChatHistory } from '@/hooks/useSession';
 
 interface MenuItem {
   title: string;
@@ -74,25 +73,25 @@ const MODE_TO_THEME: Record<string, Theme> = {
 };
 
 export function AppSidebar() {
+  const [chats, setChats] = useState<ChatHistory[]>();
   const { username } = useUserConfig();
   const { setTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useAppDispatch();
-  const { chatHistory, refetchHistory, createSession } = useSession();
-  const [startConnection, setStartConnection] = useState(false);
+  const { chatHistory, refetchHistory, createSession, sessionLoading } =
+    useSession();
 
-  useLiveConnection({
-    startConnection,
-    baseUrl: 'http://localhost:8000',
-  });
+  useEffect(() => {
+    if (sessionLoading) return;
+    setChats(chatHistory?.sessions);
+  }, [sessionLoading, chatHistory]);
 
   const handleNewChat = async () => {
     dispatch(clearMessages());
     try {
       await createSession.mutateAsync(); // wait for /session/init
       // Optionally inspect result.session_id
-      setStartConnection(true); // triggers re-render → hook sees true → connects
       refetchHistory(); // after session exists
       navigate('/');
     } catch (e) {
@@ -160,23 +159,27 @@ export function AppSidebar() {
             <SidebarGroupLabel>Chats</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu className="pr-2">
-                {chatHistory?.sessions?.map((session) => (
-                  <SidebarMenuItem key={session.session_id}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={false}
-                      onClick={() => {
-                        refetchHistory();
-                        dispatch(loadMessages(session.messages));
-                      }}
-                      className="my-1 flex h-12 items-center gap-2 py-2"
-                    >
-                      <span className="cursor-pointer">
-                        {session.session_id}
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
+                {chats?.map((session) => {
+                  const firstWithText = session.messages?.find((m) =>
+                    m?.data?.trim()
+                  );
+                  const title =
+                    firstWithText?.data?.slice(0, 40) || 'Empty conversation';
+                  return (
+                    <SidebarMenuItem key={session.session_id}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={false}
+                        onClick={() => {
+                          navigate(`/chat/${session.session_id}`);
+                        }}
+                        className="flex h-10 items-center gap-2 border py-2"
+                      >
+                        <span className="cursor-pointer">{title}</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>

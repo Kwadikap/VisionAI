@@ -1,10 +1,10 @@
 import type { Message } from '@/components/chat-ui/types';
 import { visionApi } from '@/shared/api';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef } from 'react';
 import { toast } from 'sonner';
 
-interface ChatHistory {
+export interface ChatHistory {
   session_id: string;
   messages: Message[];
 }
@@ -18,7 +18,14 @@ interface InitSessionResponse {
   // add other fields if backend returns them
 }
 
+export type ResumeArgs = {
+  sessionId: string;
+  startStream?: boolean;
+  updateToken?: boolean;
+};
+
 export function useSession() {
+  const queryClient = useQueryClient();
   const sessionCreated = useRef<boolean>(false);
   const createSession = useMutation<InitSessionResponse, Error>({
     mutationFn: async () => {
@@ -27,6 +34,7 @@ export function useSession() {
     },
     onSuccess: () => {
       sessionCreated.current = true;
+      queryClient.invalidateQueries({ queryKey: ['chat-history'] });
     },
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onError: (e: any) => {
@@ -38,7 +46,7 @@ export function useSession() {
 
   const chatHistoryQuery = useQuery<ChatHistoryResponse, Error>({
     queryKey: ['chat-history'],
-    enabled: sessionCreated.current === true,
+    // enabled: sessionCreated.current === true,
     queryFn: async () => {
       try {
         const res = await visionApi.get('/chat-history');
@@ -57,8 +65,38 @@ export function useSession() {
     refetchOnWindowFocus: false,
   });
 
+  const resumeSession = useMutation<ChatHistoryResponse, Error, ResumeArgs>({
+    mutationFn: async ({
+      sessionId,
+      startStream = false,
+      updateToken = true,
+    }) => {
+      const res = await visionApi.post(
+        '/resume-session',
+        {
+          session_id: sessionId,
+          start_stream: startStream,
+          update_token: updateToken,
+        },
+        { withCredentials: true }
+      );
+      return res.data as ChatHistoryResponse;
+    },
+    onSuccess: () => {
+      // prime cache so sidebar reflects the latest after resume
+      queryClient.invalidateQueries({ queryKey: ['chat-history'] });
+    },
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onError: (e: any) => {
+      const msg =
+        e?.response?.data?.message || e.message || 'Failed to resume session';
+      toast.error('Resume session failed', { description: msg });
+    },
+  });
+
   return {
     createSession,
+    resumeSession,
     sessionLoading: createSession.isPending,
     chatHistory: chatHistoryQuery.data,
     chatHistoryLoading: chatHistoryQuery.isLoading,

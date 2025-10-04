@@ -27,6 +27,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/chat/:sessionId',
+        element: (
+          <ChatProvider>
+            <ChatUI />
+          </ChatProvider>
+        ),
+      },
+      {
         path: '/feedback',
         element: <FeedbackForm />,
       },

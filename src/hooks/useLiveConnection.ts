@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 interface SSEventsProps {
   startConnection: boolean;
   baseUrl?: string; // default http://localhost:8000
+  reconnectKey?: string; // new: force reconnect when this changes
 }
 
 const STREAM_ERROR_ID = 'stream-error';
@@ -16,6 +17,7 @@ const SEND_ERROR_ID = 'send-error';
 export function useLiveConnection({
   startConnection,
   baseUrl = 'http://localhost:8000',
+  reconnectKey,
 }: SSEventsProps) {
   const dispatch = useAppDispatch();
   const [isConnected, setIsConnected] = useState(false);
@@ -151,9 +153,23 @@ export function useLiveConnection({
     connectSSE();
   }, [startConnection, connectSSE]);
 
+  // Reconnect when the session changes (cookie token rotated by /resume-session)
+  useEffect(() => {
+    if (!startConnection) return;
+    if (!reconnectKey) return;
+    cleanup();
+    connectSSE();
+  }, [reconnectKey, startConnection, connectSSE, cleanup]);
+
+  const restart = useCallback(() => {
+    cleanup();
+    connectSSE();
+  }, [cleanup, connectSSE]);
+
   return {
     sendMessage,
     connectionOpen,
     isConnected,
+    restart, // expose manual restart
   };
 }
